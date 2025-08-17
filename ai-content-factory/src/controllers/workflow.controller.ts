@@ -2,36 +2,16 @@ import { Request, Response } from 'express';
 import { TrendScanner, PlatformTrends } from '../services/niche-detection/trend-scanner';
 import { KeywordAnalyzer, KeywordAnalysisResult } from '../services/niche-detection/keyword-analyzer';
 import { PredictionModel, PredictionResult } from '../services/niche-detection/prediction-model';
-import { LyricGenerator } from '../services/content-generation/lyric-generator';
+import LyricGenerator from '../services/content-generation/lyric-generator';
 import { MusicGenerator } from '../services/content-generation/music-generator';
-import { AvatarGenerator } from '../services/content-generation/avatar-generator';
+import AvatarGenerator from '../services/content-generation/avatar-generator';
 import { VideoAssembler } from '../services/content-generation/video-assembler';
 import { PerformanceTracker } from '../services/analytics/performance-tracker';
 import { EngagementAnalyzer } from '../services/analytics/engagement-analyzer';
 import Niche, { INiche, NicheData } from '../models/niche.model';
 import Content from '../models/content.model';
 import { logger } from '../utils/logger';
-
-export interface ContentCreationRequest {
-    niche?: string;
-    targetPlatforms: string[];
-    contentType: 'music-video' | 'tutorial' | 'review' | 'short-form' | 'long-form';
-    theme?: string;
-    style?: string;
-    duration?: number;
-    autoPublish: boolean;
-}
-
-export interface AutomatedWorkflowConfig {
-    enabled: boolean;
-    schedule: string; // Cron expression
-    nicheSelection: 'trending' | 'emerging' | 'stable' | 'custom';
-    customNiches?: string[];
-    contentPerDay: number;
-    platforms: string[];
-    qualityThreshold: number;
-    monitoringEnabled: boolean;
-}
+import { ContentCreationRequest, AutomatedWorkflowConfig } from '../types';
 
 export class WorkflowController {
     private trendScanner: TrendScanner;
@@ -39,7 +19,7 @@ export class WorkflowController {
     private predictionModel: PredictionModel;
     private lyricGenerator: LyricGenerator;
     private musicGenerator: MusicGenerator;
-    private avatarGenerator: AvatarGenerator;
+    private avatarGenerator: typeof AvatarGenerator;
     private videoAssembler: VideoAssembler;
     private performanceTracker: PerformanceTracker;
     private engagementAnalyzer: EngagementAnalyzer;
@@ -50,7 +30,7 @@ export class WorkflowController {
         this.predictionModel = new PredictionModel();
         this.lyricGenerator = new LyricGenerator();
         this.musicGenerator = new MusicGenerator();
-        this.avatarGenerator = new AvatarGenerator();
+        this.avatarGenerator = AvatarGenerator; // Using the default export
         this.videoAssembler = new VideoAssembler();
         this.performanceTracker = new PerformanceTracker();
         this.engagementAnalyzer = new EngagementAnalyzer();
@@ -93,7 +73,7 @@ export class WorkflowController {
             });
         } catch (error) {
             logger.error('Error in market analysis:', error);
-            res.status(500).json({ success: false, error: error.message });
+            res.status(500).json({ success: false, error: (error as Error).message });
         }
     }
 
@@ -143,7 +123,7 @@ export class WorkflowController {
             });
         } catch (error) {
             logger.error('Error getting niche recommendations:', error);
-            res.status(500).json({ success: false, error: error.message });
+            res.status(500).json({ success: false, error: (error as Error).message });
         }
     }
 
@@ -175,39 +155,43 @@ export class WorkflowController {
             });
 
             const music = await this.musicGenerator.generateMusic({
-                lyrics: lyrics.content,
+                lyrics: lyrics,
                 style: request.style || 'pop',
-                duration: request.duration || 180
+                tempo: 'medium',
+                mood: 'upbeat'
             });
 
             const avatar = await this.avatarGenerator.createAvatar({
+                gender: 'neutral',
+                age: 'adult',
                 style: 'modern',
-                niche: targetNiche,
-                mood: 'energetic'
+                description: `Avatar for ${targetNiche} content`
             });
 
             // Assemble video
             const video = await this.videoAssembler.assembleVideo({
-                music: music.audioUrl,
-                avatar: avatar.avatarUrl,
-                lyrics: lyrics.content,
-                style: request.style || 'music-video',
-                platforms: request.targetPlatforms
+                music: music,
+                avatarUrl: avatar,
+                lyrics: lyrics,
+                style: request.style || 'music-video'
             });
 
             // Save content to database
             const content = new Content({
-                title: `${targetNiche} - ${lyrics.title}`,
+                title: `${targetNiche} content`,
                 description: `AI-generated content for ${targetNiche} niche`,
                 type: 'video',
                 metadata: {
+                    views: 0,
+                    likes: 0,
+                    shares: 0,
                     niche: targetNiche,
-                    platforms: request.targetPlatforms,
+                    platforms: request.targetPlatforms || [],
                     style: request.style,
                     duration: request.duration,
-                    lyrics: lyrics.content,
-                    musicUrl: music.audioUrl,
-                    avatarUrl: avatar.avatarUrl,
+                    lyrics: lyrics,
+                    musicUrl: music,
+                    avatarUrl: avatar,
                     videoUrl: video.videoUrl
                 }
             });
@@ -236,7 +220,7 @@ export class WorkflowController {
 
         } catch (error) {
             logger.error('Error creating content:', error);
-            res.status(500).json({ success: false, error: error.message });
+            res.status(500).json({ success: false, error: (error as Error).message });
         }
     }
 
@@ -275,7 +259,7 @@ export class WorkflowController {
 
         } catch (error) {
             logger.error('Error starting automated workflow:', error);
-            res.status(500).json({ success: false, error: error.message });
+            res.status(500).json({ success: false, error: (error as Error).message });
         }
     }
 
@@ -302,7 +286,7 @@ export class WorkflowController {
 
         } catch (error) {
             logger.error('Error stopping automated workflow:', error);
-            res.status(500).json({ success: false, error: error.message });
+            res.status(500).json({ success: false, error: (error as Error).message });
         }
     }
 
@@ -335,7 +319,7 @@ export class WorkflowController {
 
         } catch (error) {
             logger.error('Error getting workflow status:', error);
-            res.status(500).json({ success: false, error: error.message });
+            res.status(500).json({ success: false, error: (error as Error).message });
         }
     }
 
@@ -344,7 +328,7 @@ export class WorkflowController {
      */
     public async analyzePerformance(req: Request, res: Response): Promise<void> {
         try {
-            const performanceData = await this.performanceTracker.trackPerformance();
+            const performanceData = await this.performanceTracker.trackMetrics();
             const engagementData = await this.engagementAnalyzer.analyzeEngagement();
 
             res.status(200).json({ 
@@ -511,8 +495,8 @@ export class WorkflowController {
         
         return {
             totalContent: content.length,
-            averageViews: content.reduce((sum, c) => sum + (c.metadata.views || 0), 0) / content.length || 0,
-            averageLikes: content.reduce((sum, c) => sum + (c.metadata.likes || 0), 0) / content.length || 0,
+            averageViews: content.reduce((sum, c) => sum + (c.metadata?.views || 0), 0) / content.length || 0,
+            averageLikes: content.reduce((sum, c) => sum + (c.metadata?.likes || 0), 0) / content.length || 0,
             totalRevenue: 0,
             successRate: 85
         };

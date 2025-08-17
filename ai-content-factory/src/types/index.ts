@@ -58,6 +58,10 @@ export interface ContentCreationRequest {
     theme?: string;
     style?: string;
     platforms?: string[];
+    targetPlatforms?: string[];
+    duration?: number;
+    autoPublish?: boolean;
+    contentType?: string;
 }
 
 export interface AutomatedWorkflowConfig {
@@ -65,4 +69,7 @@ export interface AutomatedWorkflowConfig {
     schedule: string;
     contentTypes: string[];
     targetAudience?: string;
+    contentPerDay?: number;
+    nicheSelection?: 'trending' | 'emerging' | 'stable' | 'custom';
+    customNiches?: string[];
 }

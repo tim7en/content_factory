@@ -32,7 +32,7 @@ export class VideoAssembler {
 
             return { videoUrl };
         } catch (error) {
-            throw new Error(`Video assembly failed: ${error.message}`);
+            throw new Error(`Video assembly failed: ${(error as Error).message}`);
         }
     }
 

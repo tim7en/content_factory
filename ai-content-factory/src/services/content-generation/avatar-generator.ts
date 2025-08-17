@@ -14,7 +14,7 @@ export class AvatarGenerator {
             const avatarUrl = await generateAvatar(properties);
             return avatarUrl;
         } catch (error) {
-            throw new Error(`Avatar generation failed: ${error.message}`);
+            throw new Error(`Avatar generation failed: ${(error as Error).message}`);
         }
     }
 
