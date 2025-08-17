@@ -11,7 +11,8 @@ import { EngagementAnalyzer } from '../services/analytics/engagement-analyzer';
 import Niche, { INiche, NicheData } from '../models/niche.model';
 import Content from '../models/content.model';
 import { logger } from '../utils/logger';
-import { ContentCreationRequest, AutomatedWorkflowConfig } from '../types';
+import { ContentCreationRequest, AutomatedWorkflowConfig, WorkflowControlRequest } from '../types';
+import { workflowProgressManager } from '../services/workflow/workflow-progress-manager';
 
 export class WorkflowController {
     private trendScanner: TrendScanner;
@@ -199,7 +200,7 @@ export class WorkflowController {
             await content.save();
 
             // Auto-publish if requested
-            if (request.autoPublish) {
+            if (request.autoPublish && request.targetPlatforms) {
                 await this.publishContent(content, request.targetPlatforms);
             }
 
@@ -241,6 +242,9 @@ export class WorkflowController {
             // Store workflow configuration
             const workflowId = `workflow_${Date.now()}`;
 
+            // Initialize progress tracking
+            const progress = workflowProgressManager.initializeWorkflow(workflowId);
+
             // Schedule content creation
             const schedule = this.parseSchedule(config.schedule);
             
@@ -253,7 +257,8 @@ export class WorkflowController {
                     workflowId,
                     config,
                     status: 'started',
-                    nextExecution: schedule.next
+                    nextExecution: schedule.next,
+                    progress
                 }
             });
 
@@ -345,8 +350,217 @@ export class WorkflowController {
     }
 
     /**
+     * Get detailed workflow progress with step-by-step information
+     */
+    public async getWorkflowProgress(req: Request, res: Response): Promise<void> {
+        try {
+            const { workflowId } = req.params;
+            
+            const progress = workflowProgressManager.getWorkflowProgress(workflowId);
+            
+            if (!progress) {
+                return res.status(404).json({ 
+                    success: false, 
+                    error: 'Workflow not found' 
+                });
+            }
+
+            res.json({
+                success: true,
+                data: progress
+            });
+
+        } catch (error) {
+            logger.error('Error getting workflow progress:', error);
+            res.status(500).json({ success: false, error: (error as Error).message });
+        }
+    }
+
+    /**
+     * Control workflow execution (pause, resume, go to step)
+     */
+    public async controlWorkflow(req: Request, res: Response): Promise<void> {
+        try {
+            const { workflowId } = req.params;
+            const controlRequest: WorkflowControlRequest = req.body;
+            
+            const progress = workflowProgressManager.controlWorkflow(workflowId, controlRequest);
+            
+            if (!progress) {
+                return res.status(404).json({ 
+                    success: false, 
+                    error: 'Workflow not found' 
+                });
+            }
+
+            res.json({
+                success: true,
+                data: progress,
+                message: `Workflow ${controlRequest.action} successful`
+            });
+
+        } catch (error) {
+            logger.error('Error controlling workflow:', error);
+            res.status(500).json({ success: false, error: (error as Error).message });
+        }
+    }
+
+    /**
+     * Get all active workflows
+     */
+    public async getAllWorkflows(req: Request, res: Response): Promise<void> {
+        try {
+            const workflows = workflowProgressManager.getAllWorkflows();
+            
+            res.json({
+                success: true,
+                data: workflows
+            });
+
+        } catch (error) {
+            logger.error('Error getting all workflows:', error);
+            res.status(500).json({ success: false, error: (error as Error).message });
+        }
+    }
+
+    /**
+     * Start a new interactive workflow with step tracking
+     */
+    public async startInteractiveWorkflow(req: Request, res: Response): Promise<void> {
+        try {
+            const config: AutomatedWorkflowConfig = req.body;
+            
+            // Validate configuration
+            if (!config.platforms || config.platforms.length === 0) {
+                throw new Error('At least one platform must be specified');
+            }
+
+            const workflowId = `interactive_workflow_${Date.now()}`;
+            
+            // Initialize workflow progress tracking
+            const progress = workflowProgressManager.initializeWorkflow(workflowId);
+            
+            // Start the workflow
+            workflowProgressManager.startWorkflow(workflowId);
+            
+            // Begin the workflow execution
+            this.runInteractiveWorkflow(workflowId, config);
+
+            res.json({
+                success: true,
+                data: {
+                    workflowId,
+                    progress,
+                    config
+                }
+            });
+
+        } catch (error) {
+            logger.error('Error starting interactive workflow:', error);
+            res.status(500).json({ success: false, error: (error as Error).message });
+        }
+    }
+
+    /**
      * Private helper methods
      */
+    private async runInteractiveWorkflow(workflowId: string, config: AutomatedWorkflowConfig): Promise<void> {
+        logger.info(`Starting interactive workflow ${workflowId}`);
+        
+        try {
+            // Step 1: Market Analysis
+            workflowProgressManager.updateStepProgress(workflowId, 'market-analysis', 10);
+            const platformTrends = await this.trendScanner.scanAllTrends();
+            workflowProgressManager.updateStepProgress(workflowId, 'market-analysis', 50);
+            const existingNiches = await Niche.find().sort({ lastAnalyzed: 1 }).limit(100);
+            workflowProgressManager.updateStepProgress(workflowId, 'market-analysis', 80);
+            await this.updateExistingNiches(existingNiches, platformTrends);
+            workflowProgressManager.completeStep(workflowId, 'market-analysis', { 
+                trendsFound: platformTrends.length,
+                nichesAnalyzed: existingNiches.length 
+            });
+
+            // Step 2: Niche Selection
+            workflowProgressManager.updateStepProgress(workflowId, 'niche-selection', 20);
+            const niches = await this.selectNichesForWorkflow(config);
+            workflowProgressManager.completeStep(workflowId, 'niche-selection', { 
+                selectedNiches: niches.length 
+            });
+
+            // Step 3: Content Planning
+            workflowProgressManager.updateStepProgress(workflowId, 'content-planning', 30);
+            const contentPlans = niches.map(niche => ({
+                niche,
+                theme: niche.themes?.[0] || niche.name,
+                platforms: config.platforms
+            }));
+            workflowProgressManager.completeStep(workflowId, 'content-planning', { 
+                contentPlans: contentPlans.length 
+            });
+
+            // Generate content for each plan
+            for (let i = 0; i < Math.min(config.contentPerDay || 1, contentPlans.length); i++) {
+                const plan = contentPlans[i];
+                
+                // Step 4: Lyric Generation
+                workflowProgressManager.updateStepProgress(workflowId, 'lyric-generation', (i + 1) * 25);
+                const lyrics = await this.lyricGenerator.generateContent(plan.theme);
+                
+                // Step 5: Music Generation  
+                workflowProgressManager.updateStepProgress(workflowId, 'music-generation', (i + 1) * 25);
+                const music = await this.musicGenerator.generateMusic(lyrics, 'upbeat');
+                
+                // Step 6: Avatar Creation
+                workflowProgressManager.updateStepProgress(workflowId, 'avatar-creation', (i + 1) * 25);
+                const avatar = await this.avatarGenerator.generateAvatar({
+                    gender: 'neutral',
+                    age: 'young',
+                    style: 'modern'
+                });
+                
+                // Step 7: Video Assembly
+                workflowProgressManager.updateStepProgress(workflowId, 'video-assembly', (i + 1) * 25);
+                const video = await this.videoAssembler.assembleVideo({
+                    lyrics,
+                    music,
+                    avatar,
+                    theme: plan.theme
+                });
+                
+                // Step 8: Publishing
+                workflowProgressManager.updateStepProgress(workflowId, 'publishing', (i + 1) * 25);
+                await this.publishContent({ music, video }, config.platforms);
+                
+                // Step 9: Analytics Setup
+                workflowProgressManager.updateStepProgress(workflowId, 'analytics-tracking', (i + 1) * 25);
+                await this.performanceTracker.trackContentPerformance(video.id);
+            }
+            
+            // Complete remaining steps
+            workflowProgressManager.completeStep(workflowId, 'lyric-generation');
+            workflowProgressManager.completeStep(workflowId, 'music-generation');
+            workflowProgressManager.completeStep(workflowId, 'avatar-creation');
+            workflowProgressManager.completeStep(workflowId, 'video-assembly');
+            workflowProgressManager.completeStep(workflowId, 'publishing');
+            workflowProgressManager.completeStep(workflowId, 'analytics-tracking');
+            
+            logger.info(`Interactive workflow ${workflowId} completed successfully`);
+            
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error in interactive workflow ${workflowId}:`, error);
+            
+            // Find current step and mark it as failed
+            const progress = workflowProgressManager.getWorkflowProgress(workflowId);
+            if (progress) {
+                const currentStep = progress.steps[progress.currentStepIndex];
+                if (currentStep) {
+                    workflowProgressManager.failStep(workflowId, currentStep.id, errorMessage);
+                }
+            }
+        }
+    }
+
     private async identifyNewNiches(platformTrends: PlatformTrends[]): Promise<string[]> {
         const allKeywords: string[] = [];
         
@@ -426,6 +640,67 @@ export class WorkflowController {
         return { next };
     }
 
+    private async selectNichesForWorkflow(config: AutomatedWorkflowConfig): Promise<any[]> {
+        try {
+            // Select niches based on configuration
+            let query: any = {};
+            
+            if (config.nicheSelection === 'trending') {
+                query = { 'trendScore': { $gte: 70 } };
+            } else if (config.nicheSelection === 'emerging') {
+                query = { 'trendScore': { $gte: 50, $lt: 70 } };
+            } else if (config.nicheSelection === 'stable') {
+                query = { 'monetizationPotential.overallScore': { $gte: 60 } };
+            } else if (config.nicheSelection === 'custom' && config.customNiches) {
+                query = { 'name': { $in: config.customNiches } };
+            }
+
+            const niches = await Niche.find(query)
+                .sort({ 'monetizationPotential.overallScore': -1 })
+                .limit(10);
+
+            return niches;
+        } catch (error) {
+            logger.error('Error selecting niches:', error);
+            return [];
+        }
+    }
+
+    private async calculateWorkflowMetrics(workflowId: string): Promise<any> {
+        try {
+            // Get content created by this workflow
+            const content = await Content.find({ 'metadata.workflowId': workflowId });
+            
+            if (content.length === 0) {
+                return {
+                    totalContent: 0,
+                    averageEngagement: 0,
+                    totalViews: 0,
+                    revenue: 0
+                };
+            }
+
+            const totalViews = content.reduce((sum, c) => sum + (c.metrics?.views || 0), 0);
+            const totalEngagement = content.reduce((sum, c) => sum + (c.metrics?.engagement || 0), 0);
+            const averageEngagement = totalEngagement / content.length;
+
+            return {
+                totalContent: content.length,
+                averageEngagement,
+                totalViews,
+                revenue: 0 // Placeholder for revenue calculation
+            };
+        } catch (error) {
+            logger.error('Error calculating workflow metrics:', error);
+            return {
+                totalContent: 0,
+                averageEngagement: 0,
+                totalViews: 0,
+                revenue: 0
+            };
+        }
+    }
+
     private async runAutomatedWorkflow(workflowId: string, config: AutomatedWorkflowConfig): Promise<void> {
         logger.info(`Running automated workflow ${workflowId}`);
         
@@ -434,7 +709,7 @@ export class WorkflowController {
             const niches = await this.selectNichesForWorkflow(config);
             
             // 2. Create content for each niche
-            for (let i = 0; i < config.contentPerDay; i++) {
+            for (let i = 0; i < (config.contentPerDay || 1); i++) {
                 const niche = niches[i % niches.length];
                 
                 const contentRequest: ContentCreationRequest = {

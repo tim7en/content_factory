@@ -5,6 +5,7 @@ import Navigation from '@/components/Navigation';
 import TrendsDashboard from '@/components/TrendsDashboard';
 import ContentCreator from '@/components/ContentCreator';
 import Analytics from '@/components/Analytics';
+import WorkflowDashboard from '@/components/WorkflowDashboard';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('trends');
@@ -16,6 +17,8 @@ export default function Home() {
         return <TrendsDashboard />;
       case 'creator':
         return <ContentCreator />;
+      case 'workflow':
+        return <WorkflowDashboard />;
       case 'analytics':
         return <Analytics />;
       case 'settings':

@@ -97,6 +97,12 @@ app.get('/api/workflow/:workflowId/status', workflowController.getWorkflowStatus
 app.delete('/api/workflow/:workflowId', workflowController.stopAutomatedWorkflow.bind(workflowController));
 app.get('/api/analytics/performance', workflowController.analyzePerformance.bind(workflowController));
 
+// New interactive workflow routes
+app.get('/api/workflow/:workflowId/progress', workflowController.getWorkflowProgress.bind(workflowController));
+app.post('/api/workflow/:workflowId/control', workflowController.controlWorkflow.bind(workflowController));
+app.get('/api/workflow/all', workflowController.getAllWorkflows.bind(workflowController));
+app.post('/api/workflow/interactive/start', workflowController.startInteractiveWorkflow.bind(workflowController));
+
 // Analytics routes
 app.get('/api/analytics/dashboard', analyticsController.getDashboard.bind(analyticsController));
 app.get('/api/analytics/reports', analyticsController.generateReport.bind(analyticsController));
