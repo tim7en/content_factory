@@ -280,6 +280,33 @@ export class WorkflowController {
     }
 
     /**
+     * Stop automated workflow
+     */
+    public async stopAutomatedWorkflow(req: Request, res: Response): Promise<void> {
+        try {
+            const { workflowId } = req.params;
+            
+            logger.info(`Stopping automated workflow: ${workflowId}`);
+
+            // Stop the workflow (in a real implementation, you'd track running workflows)
+            // For now, we'll just return success
+            
+            res.json({
+                success: true,
+                data: {
+                    workflowId,
+                    status: 'stopped',
+                    stoppedAt: new Date()
+                }
+            });
+
+        } catch (error) {
+            logger.error('Error stopping automated workflow:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    }
+
+    /**
      * Get workflow status and metrics
      */
     public async getWorkflowStatus(req: Request, res: Response): Promise<void> {

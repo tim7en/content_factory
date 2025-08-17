@@ -36,6 +36,14 @@ export interface Avatar {
     properties: Record<string, any>;
 }
 
+export interface AvatarProperties {
+    gender: string;
+    age: string;
+    style: string;
+    voice?: string;
+    description?: string;
+}
+
 export interface MusicTrack {
     id: string;
     title: string;
@@ -43,4 +51,18 @@ export interface MusicTrack {
     genre: string;
     duration: number; // in seconds
     releaseDate: Date;
+}
+
+export interface ContentCreationRequest {
+    niche?: string;
+    theme?: string;
+    style?: string;
+    platforms?: string[];
+}
+
+export interface AutomatedWorkflowConfig {
+    platforms: string[];
+    schedule: string;
+    contentTypes: string[];
+    targetAudience?: string;
 }

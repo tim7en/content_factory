@@ -8,10 +8,9 @@ export class MerchGenerator {
         this.avatar = avatar;
     }
 
-    public async createMerchandise() {
+    public async createMerch(): Promise<string> {
         try {
             const design = await this.generateDesign();
-            // Further processing to save or publish the design can be added here
             return design;
         } catch (error) {
             console.error('Error generating merchandise:', error);
@@ -19,7 +18,11 @@ export class MerchGenerator {
         }
     }
 
-    private async generateDesign() {
+    public async createMerchandise(): Promise<string> {
+        return this.createMerch();
+    }
+
+    private async generateDesign(): Promise<string> {
         const designPrompt = this.createDesignPrompt();
         return await generateMerchDesign(designPrompt);
     }

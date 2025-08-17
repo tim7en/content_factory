@@ -1,5 +1,18 @@
 import { Schema, model } from 'mongoose';
 
+export interface Avatar {
+    id: string;
+    name: string;
+    description: string;
+    imageUrl?: string;
+    properties: {
+        gender: string;
+        age: string;
+        style: string;
+        voice?: string;
+    };
+}
+
 const contentSchema = new Schema({
     title: {
         type: String,

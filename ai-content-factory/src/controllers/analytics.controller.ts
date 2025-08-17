@@ -40,4 +40,23 @@ export class AnalyticsController {
             res.status(500).json({ message: 'Error generating report', error });
         }
     }
+
+    public async getDashboard(req: Request, res: Response): Promise<void> {
+        try {
+            const metrics = await this.performanceTracker.trackMetrics();
+            const engagement = await this.engagementAnalyzer.analyze();
+            const report = await this.reportGenerator.generate();
+            
+            const dashboard = {
+                metrics,
+                engagement,
+                report,
+                timestamp: new Date()
+            };
+            
+            res.status(200).json(dashboard);
+        } catch (error) {
+            res.status(500).json({ message: 'Error generating dashboard', error });
+        }
+    }
 }
