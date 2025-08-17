@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { BarChart3, Bot, Settings, TrendingUp, DollarSign } from 'lucide-react';
+import { BarChart3, Bot, Settings, TrendingUp, DollarSign, GitBranch } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: string;
@@ -13,6 +12,7 @@ export default function Navigation({ activeTab, onTabChange }: NavigationProps) 
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'trends', label: 'Trends', icon: TrendingUp },
     { id: 'creator', label: 'Create Content', icon: Bot },
+    { id: 'workflow', label: 'Workflows', icon: GitBranch },
     { id: 'analytics', label: 'Analytics', icon: DollarSign },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
