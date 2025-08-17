@@ -1,27 +1,42 @@
-import { Sequelize } from 'sequelize';
+import mongoose from 'mongoose';
+import { config } from 'dotenv';
+import { logger } from '../utils/logger';
 
-// Database configuration settings
-const databaseConfig = {
-    database: process.env.DB_NAME || 'your_database_name',
-    username: process.env.DB_USER || 'your_database_user',
-    password: process.env.DB_PASSWORD || 'your_database_password',
-    host: process.env.DB_HOST || 'localhost',
-    dialect: 'postgres', // or 'mysql', 'sqlite', etc.
+config();
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ai_content_factory';
+
+export const connectDatabase = async (): Promise<void> => {
+    try {
+        const connection = await mongoose.connect(MONGODB_URI, {
+            maxPoolSize: 10,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        });
+        
+        logger.info(`MongoDB connected: ${connection.connection.host}`);
+    } catch (error) {
+        logger.error('Database connection failed:', error);
+        process.exit(1);
+    }
 };
 
-// Create a new Sequelize instance
-const sequelize = new Sequelize(databaseConfig.database, databaseConfig.username, databaseConfig.password, {
-    host: databaseConfig.host,
-    dialect: databaseConfig.dialect,
+export const disconnectDatabase = async (): Promise<void> => {
+    try {
+        await mongoose.disconnect();
+        logger.info('MongoDB disconnected');
+    } catch (error) {
+        logger.error('Database disconnection failed:', error);
+    }
+};
+
+// Handle connection events
+mongoose.connection.on('error', (error) => {
+    logger.error('MongoDB connection error:', error);
 });
 
-// Test the database connection
-sequelize.authenticate()
-    .then(() => {
-        console.log('Database connection has been established successfully.');
-    })
-    .catch(err => {
-        console.error('Unable to connect to the database:', err);
-    });
+mongoose.connection.on('disconnected', () => {
+    logger.warn('MongoDB disconnected');
+});
 
-export default sequelize;
+export default mongoose;

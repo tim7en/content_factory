@@ -1,13 +1,11 @@
-export interface PerformanceMetrics {
+export interface EngagementData {
     contentId: string;
-    views: number;
-    likes: number;
+    engagementRate: number;
+    interactions: number;
     shares: number;
     comments: number;
-    watchTime: number; // in seconds
-    engagementRate: number; // percentage
-    createdAt: Date;
-    updatedAt: Date;
+    likes: number;
+    timestamp: Date;
 }
 
 export interface EngagementMetrics {

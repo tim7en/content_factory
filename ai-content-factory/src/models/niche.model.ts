@@ -1,4 +1,4 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, Model, Query } from 'mongoose';
 
 export interface INiche extends Document {
     name: string;
@@ -44,6 +44,13 @@ export interface INiche extends Document {
     createdAt: Date;
     updatedAt: Date;
     lastAnalyzed: Date;
+}
+
+interface INicheModel extends Model<INiche> {
+    findByCategory(category: string): Query<INiche[], INiche>;
+    findTrending(limit?: number): Query<INiche[], INiche>;
+    findByMonetizationPotential(minScore?: number): Query<INiche[], INiche>;
+    findStale(hours?: number): Query<INiche[], INiche>;
 }
 
 export interface NicheData {
@@ -292,6 +299,6 @@ nicheSchema.statics.findStale = function(hours: number = 24) {
     return this.find({ lastAnalyzed: { $lt: staleDate } });
 };
 
-const Niche = model<INiche>('Niche', nicheSchema);
+const Niche = model<INiche, INicheModel>('Niche', nicheSchema);
 
 export default Niche;

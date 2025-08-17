@@ -1,6 +1,6 @@
 import { RevenueModel } from '../../models/revenue.model';
 
-class RevenueTracker {
+export class RevenueTracker {
     private revenueStreams: RevenueModel[];
 
     constructor() {
