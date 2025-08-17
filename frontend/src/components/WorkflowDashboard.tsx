@@ -31,7 +31,6 @@ export default function WorkflowDashboard() {
   });
 
   const platforms = ['TikTok', 'YouTube', 'Instagram', 'Twitter', 'Spotify'];
-  const contentTypes = ['music-video', 'audio-only', 'lyrics-post', 'promotional'];
 
   useEffect(() => {
     fetchActiveWorkflows();
@@ -259,7 +258,7 @@ export default function WorkflowDashboard() {
                     value={newWorkflowConfig.nicheSelection}
                     onChange={(e) => setNewWorkflowConfig(prev => ({
                       ...prev,
-                      nicheSelection: e.target.value as any
+                      nicheSelection: e.target.value as 'trending' | 'emerging' | 'stable' | 'custom'
                     }))}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >

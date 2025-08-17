@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { BarChart3, Bot, Settings, TrendingUp, DollarSign, GitBranch } from 'lucide-react';
 
 interface NavigationProps {

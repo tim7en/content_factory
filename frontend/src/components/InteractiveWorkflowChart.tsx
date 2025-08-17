@@ -10,8 +10,7 @@ import {
   Clock, 
   AlertCircle,
   Circle,
-  ChevronRight,
-  Eye
+  ChevronRight
 } from 'lucide-react';
 
 interface WorkflowStep {
@@ -23,7 +22,7 @@ interface WorkflowStep {
   startTime?: string;
   endTime?: string;
   error?: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 interface WorkflowProgress {
@@ -144,6 +143,7 @@ export default function InteractiveWorkflowChart({
       // Use mock data for demonstration
       setWorkflow(mockWorkflow);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflowId]);
 
   const fetchWorkflowProgress = async () => {
@@ -189,7 +189,7 @@ export default function InteractiveWorkflowChart({
     setIsLoading(false);
   };
 
-  const getStepIcon = (step: WorkflowStep, index: number) => {
+  const getStepIcon = (step: WorkflowStep) => {
     switch (step.status) {
       case 'completed':
         return <CheckCircle className="h-6 w-6 text-green-600" />;
@@ -311,7 +311,7 @@ export default function InteractiveWorkflowChart({
               <div className="flex items-center">
                 {/* Step icon */}
                 <div className="flex-shrink-0 mr-4">
-                  {getStepIcon(step, index)}
+                  {getStepIcon(step)}
                 </div>
                 
                 {/* Step content */}

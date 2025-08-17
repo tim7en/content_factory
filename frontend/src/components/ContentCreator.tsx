@@ -11,6 +11,16 @@ interface ContentRequest {
   autoPublish: boolean;
 }
 
+interface GeneratedContent {
+  contentId: string;
+  status: string;
+  lyrics?: string;
+  music?: string;
+  avatar?: string;
+  video?: string;
+  platforms?: string[];
+}
+
 export default function ContentCreator() {
   const [request, setRequest] = useState<ContentRequest>({
     niche: '',
@@ -21,7 +31,7 @@ export default function ContentCreator() {
   });
   
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState<any>(null);
+  const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
 
   const platforms = ['TikTok', 'YouTube', 'Instagram', 'Twitter', 'Spotify'];
   const styles = ['upbeat', 'chill', 'electronic', 'pop', 'rock', 'hip-hop'];
@@ -260,7 +270,7 @@ export default function ContentCreator() {
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-2">Target Platforms</h3>
                   <div className="flex flex-wrap gap-2">
-                    {generatedContent.platforms.map((platform: string) => (
+                    {generatedContent.platforms?.map((platform: string) => (
                       <span key={platform} className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">
                         {platform}
                       </span>
